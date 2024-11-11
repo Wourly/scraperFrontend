@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Scraper</title>
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <header>
+    <h1>Google Scraper</h1>
+  </header>
+  <main>
+    <!-- Input Box -->
+    <div id="input-box">
+      <input type="text" id="search-input" placeholder="temperature on venus" />
+      <button id="scrape-btn">Scrape</button>
+    </div>
+
+    <!-- Result Container (Left: JSON, Right: Google Results) -->
+    <div id="result-container">
+      <div id="json-box">
+        <div id="json-output">JSON Data will appear here...</div>
+      </div>
+      <div id="google-results-box">
+        <div id="google-results">Scraped Google results will appear here...</div>
+      </div>
+    </div>
+
+    <!-- Save Button -->
+    <button id="save-btn">Save</button>
+  </main>
+  <footer>
+    <p>Developed by Martin Melichar</p>
+  </footer>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

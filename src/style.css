@@ -1,0 +1,108 @@
+/* Apply basic box-sizing to avoid weird behavior with padding/margins */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* The whole page is a flex container in a column direction */
+html, body {
+  height: 100%; /* Make sure body fills the entire viewport */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header will be fixed size */
+header {
+  background: #4CAF50;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Footer will also be fixed size */
+footer {
+  background: #333;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column; /* Stacks everything vertically by default */
+  gap: 20px; /* Adds space between elements */
+  padding: 1rem;
+  background-color: #f4f4f4;
+}
+
+/* Larger box for the input */
+#input-box {
+  flex: 2; /* Takes up more space */
+  background-color: #ffffff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Box container for the two side-by-side boxes */
+#result-container {
+  display: flex;
+  flex-direction: row;
+  gap: 20px; /* Space between left and right boxes */
+  justify-content: space-between;
+}
+
+/* Left box (JSON display) */
+#json-box {
+  flex: 3; /* Takes up equal space */
+  background-color: #ffffff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow-y: auto; /* Makes sure long JSON doesn't overflow the box */
+  height: 300px; /* Define a height for the JSON box */
+  white-space: pre-wrap; /* Ensure JSON formatting is respected */
+}
+
+/* Right box (Scraped Google results) */
+#google-results-box {
+  flex: 2; /* Takes more space */
+  background-color: #ffffff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  height: 300px; /* Define a height for the results box */
+  overflow-y: auto; /* Makes sure long results don't overflow */
+}
+
+/* Save button */
+#save-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+/* Save button hover effect */
+#save-btn:hover {
+  background-color: #45a049;
+}
+
+/* Responsive design - stack boxes on small screens */
+@media (max-width: 768px) {
+  #result-container {
+    flex-direction: column; /* Stack the boxes vertically */
+  }
+  
+  #google-results-box, #json-box {
+    flex: 1 1 100%; /* Full width on small screens */
+  }
+}
+
