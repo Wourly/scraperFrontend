@@ -39,11 +39,61 @@ main {
 
 /* Larger box for the input */
 #input-box {
-  flex: 2; /* Takes up more space */
+  flex: 2;
   background-color: #ffffff;
   padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+  display: flex; /* Added flexbox to arrange children horizontally */
+  justify-content: center; /* Center children horizontally */
+  align-items: center; /* Center children vertically */
+  gap: 10px; /* Optional: space between children */
+}
+
+/* Style for the input field */
+#input-box input {
+  padding: 0.5rem;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+/* Style for the button */
+#scrape-btn {
+  padding: 0.5rem 1rem;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Loading indicator (initially hidden) */
+#loading-indicator {
+  display: none; /* Hidden by default */
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+/* Animation for the loading spinner */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Make the loader visible when active */
+#loading-indicator.visible {
+  display: inline-block; /* Show when active */
+  position: absolute;
+  right: 35px;
+}
+
+/* Optional: Add a spinner animation symbol */
+#loading-indicator:before {
+  content: '⏳'; /* You can use any other symbol or an actual spinner GIF here */
+  margin-right: 5px;
 }
 
 /* Box container for the two side-by-side boxes */
@@ -63,7 +113,6 @@ main {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow-y: auto; /* Makes sure long JSON doesn't overflow the box */
   height: 300px; /* Define a height for the JSON box */
-  white-space: pre-wrap; /* Ensure JSON formatting is respected */
 }
 
 /* Right box (Scraped Google results) */
@@ -79,7 +128,6 @@ main {
 
 /* Save button */
 #save-btn {
-  background-color: #4CAF50;
   color: white;
   padding: 1rem;
   text-align: center;
@@ -90,9 +138,29 @@ main {
   transition: background-color 0.3s;
 }
 
+#save-btn[data-state=enabled] {
+  background-color: #4CAF50;
+}
+
+#save-btn:not([data-state=enabled]) {
+  background-color: grey;
+  cursor: initial;
+}
+
 /* Save button hover effect */
-#save-btn:hover {
+#save-btn[data-state=enabled]:hover {
   background-color: #45a049;
+}
+
+.changedQuery {
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-size: 26px;
+  margin-bottom: 25px;
+  color: orangered;
+}
+
+.validNode:not(:last-child) {
+  margin-bottom: 20px;
 }
 
 /* Responsive design - stack boxes on small screens */
@@ -106,3 +174,38 @@ main {
   }
 }
 
+/* JSON formatting */
+.jsonKeyValuePair {
+  margin-left: 15px;
+}
+
+.jsonKeyValuePair .key {
+  color: navy;
+}
+
+.jsonKeyValuePair .value {
+  color: orange;
+}
+
+.jsonKeyValuePair .value.headline {
+  color: orangered;
+}
+
+.jsonKeyValuePair .value.link {
+  color: #5DADE2;
+}
+
+/* extra result formatting */
+.validNode a.mainAnchor {
+  text-decoration: none;
+}
+
+.validNode h3 {
+  color: orangered;
+  transition: color 0.5s;
+}
+
+.validNode h3:hover {
+  color: blue;
+  text-decoration: none;
+}

@@ -1,120 +1,211 @@
 import axios from "axios";
+import { descriptionFinder } from "./descriptionFinder";
+import { formatJSON } from "./formatJSON";
 
 const domParser = new DOMParser();
 
-const input = document.querySelector("[id=search-input]") as HTMLInputElement;
-const button = document.querySelector("[id=scrape-btn]") as HTMLButtonElement;
-const scrapeArea = document.querySelector("[id=google-results]") as HTMLDivElement;
-const JSONArea = document.querySelector("[id=json-output]") as HTMLDivElement;
-const downloadButton = document.querySelector('#save-btn') as HTMLButtonElement;
 
-let arrayToStore:Array<GoogleResultEntry> = new Array();
+interface IDOM {
+  input:HTMLInputElement
+  scrapeArea:HTMLDivElement
+  JSONArea:HTMLDivElement
+  scrapeButton:HTMLButtonElement
+  downloadButton:HTMLButtonElement
+  loadingIndicator:HTMLDivElement
+}
 
-button.addEventListener("click", requestGooglePage);
+//--------- Elements, that we will use
+//---------------------------------------------------------------
+const DOM:IDOM = {
+  input: document.querySelector("[id=search-input]") as HTMLInputElement,
+  scrapeArea: document.querySelector("[id=google-results]") as HTMLDivElement,
+  JSONArea: document.querySelector("[id=json-output]") as HTMLDivElement,
+  scrapeButton: document.querySelector("[id=scrape-btn]") as HTMLButtonElement,
+  downloadButton: document.querySelector('#save-btn') as HTMLButtonElement,
+  loadingIndicator: document.querySelector("#loading-indicator") as HTMLDivElement
+}
 
-type TPossibleString = string | undefined;
+//--------- We certainly want them all ready, no missed queries
+//---------------------------------------------------------------
+for (const key in DOM) {
+  const element = DOM[key as keyof IDOM];
+
+  if (element === null) {
+    throw new Error(`Key element was not connected to application: ${key}.`)
+  }
+}
+
+
+let arrayToStoreEntries:Array<GoogleResultEntry> = new Array();
+
+DOM.scrapeButton.addEventListener("click", requestGooglePage);
+
+//--------- 
+//---------------------------------------------------------------
+interface IPriorityEntryElements {
+  [key:string]: HTMLElement | null
+  headline: HTMLHeadElement | null,
+  anchor: HTMLAnchorElement | null,
+  description: HTMLDivElement | null
+}
+
+//--------- Storing JSON entries
+//---------------------------------------------------------------
+type TGoogleResultEntry = {
+  headline: string,
+  link:string,
+  description:string
+}
 
 class GoogleResultEntry {
   headline:string
   link:string
   description:string
 
-  constructor (headline:TPossibleString, link:TPossibleString, description:TPossibleString) {
-    
-    if (typeof headline !== 'string')
-      throw new Error(`Expected string for headline, but got ${headline}`)
+  constructor (constructorObject:TGoogleResultEntry) {
 
-    if (typeof link !== 'string')
-      throw new Error(`Expected string for link, but got ${link}`)
-
-    if (typeof description !== 'string')
-      throw new Error(`Expected string for description, but got ${description}`)
-
-    this.headline = headline;
-    this.link = link;
-    this.description = description;
+    this.headline = constructorObject.headline;
+    this.link = constructorObject.link;
+    this.description = constructorObject.description;
   }
 }
+//---------------------------------------------------------------
+//--------- Storing JSON entries end
 
-
-// server API call
+//================================================================================================
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% API CALL
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function requestGooglePage() {
+  DOM.loadingIndicator.classList.add("visible");
+  arrayToStoreEntries.length = 0;
 
   axios.post('http://localhost:3000/scrape', {
-    query: input.value.replace(/\s/g, '+'),
+    query: DOM.input.value.replace(/\s/g, '+'),
   })
   .then(response => {
 
-    const preview = new DocumentFragment();
-    const cleanResponse:string = response.data.replace(/�/g, '') // google tries to add esoteric characters even with multiple attempts of adding encodings, so removal of them was deemed as the most efficient solution
+    const cleanResponse:string = response.data.replace(/�/g, '') // google tries to add esoteric characters, even with multiple attempts of adding encodings, so removal of them was deemed as the most efficient solution
 
-    //--------- verify results
+    //--------- verify if any results were found
     //---------------------------------------------------------------
-    if (cleanResponse.match(/Did you mean:/)) {
-      scrapeArea.innerHTML = '<b>Your query was not specific enough or contained malformed informations, thus it was shut down.</b>'; // better to have it empty, if we want to make it occupied, clean and safe!
-      throw new Error("Results were not specific enough.")
-    } else if (cleanResponse.match(/did not match any documents./)) {
-      scrapeArea.innerHTML = '<b>Your query seems to be invalid, thus no results were found.</b>'; // better to have it empty, if we want to make it occupied, clean and safe!
+    if (cleanResponse.match(/did not match any documents./)) {
+      DOM.scrapeArea.innerHTML = '<b>Your query seems to be invalid, thus no results were found.</b>'; // better to have it empty, if we want to make it occupied, clean and safe!
       throw new Error("Resultsnot found.")
     }
 
     const page = domParser.parseFromString(cleanResponse, 'text/html');
-    const results = page.querySelectorAll(".kCrYT:not(div[style] ~ .kCrYT)"); // selecting relevant data
+    const resultContainer = page.querySelector("div#main") as HTMLDivElement; // selecting relevant data
+    
+    resultContainer.querySelector("div[data-hveid")?.remove();
+    resultContainer.querySelector("footer")?.remove();
+    resultContainer.querySelectorAll(".X7NTVe")?.forEach(node => node.remove());
 
-    arrayToStore.length = 0;
 
-    let entry:GoogleResultEntry | null = null;
+    //--------- was google adjusting query?
+    //---------------------------------------------------------------
+    const changedQueryContainers = resultContainer.querySelectorAll("#scc a");
+    let changedQuery = '';
 
-    // preparing for loop
-    let headline:TPossibleString;
-    let link:TPossibleString;
-    let description:TPossibleString;
-
-    for (const node of results) {
-
-      preview.appendChild(node);
-      console.log(node)
-      // processing link [headline + link]
-      if (node.classList.contains("egMi0")) {
-        const headlineNode = node.querySelector("a");
-
-        link = headlineNode?.href.replace(/^(.*=)(https)/gm, '$2') // remove the local link, but retain the functional link
-        headline = headlineNode?.querySelector("h3 div")?.innerHTML;
-      // processing description and finalizing array object
-      } else {
-        const descriptionNode = node.querySelector(".BNeawe:not(:has(div))");
-        description = descriptionNode?.innerHTML;
-
-        // at this point scraping of single record is done, thus it can be pushed
-        entry = new GoogleResultEntry(headline, link, description)
-        arrayToStore.push(entry);
-
-        // just to make sure, that we will have fresh results next time or an error
-        link = undefined;
-        headline = undefined;
-        description = undefined
+    // storing information about the different query
+    if (changedQueryContainers.length === 2) {
+      if (changedQueryContainers[0].textContent) {
+        changedQuery = changedQueryContainers[0].textContent;
       }
     }
 
+    const nodesLength = resultContainer.children.length;
+
+
+    //==============================================================
+    //========== result finding loop
+    //==============================================================
+    // reverse approach is mandatory, since node.remove() is used and it would mess up with the order
+    resultLoop: for (let reverseIterator = nodesLength - 1; reverseIterator >= 0; reverseIterator--) {
+
+      const node = resultContainer.children[reverseIterator] as HTMLDivElement;
+
+      //--------- lookig up for priority elements
+      //---------------------------------------------------------------
+      const mainAnchor = node.querySelector('a') as HTMLAnchorElement;
+
+      const priorityElements:IPriorityEntryElements = {
+        headline: node.querySelector('h3') as HTMLHeadElement,
+        anchor: mainAnchor,
+        description: descriptionFinder(node, mainAnchor)      // advanced function, that does not rely on classes, but can find description on its own with just two clues
+      }
+
+      //--------- checking, whether key elements are valid
+      //---------------------------------------------------------------
+      for (const element in priorityElements) {
+        if (priorityElements[element] === null) {
+          node.remove();
+          continue resultLoop;
+        }
+      }
+
+      //--------- adding style to valid nodes
+      //---------------------------------------------------------------
+      node.classList.add("validNode");
+      priorityElements.anchor?.classList.add("mainAnchor");
+
+      //--------- cleaning anchors
+      //---------------------------------------------------------------
+      const allAnchorsInNode = node.querySelectorAll("a");
+
+      for (const anchor of allAnchorsInNode) {
+        if (anchor.href) {
+          anchor.href = anchor.href.replace(/^(.*=)(https)/gm, '$2')
+        }
+      }
+
+
+      //--------- creating JSON object data for entry
+      //---------------------------------------------------------------
+      const googleResultEntry = new GoogleResultEntry ({
+        headline: priorityElements.headline!.innerText,
+        link: priorityElements.anchor!.href, // link appends local url in front of it, malforming it -> this regexp fixes it
+        description: priorityElements.description!.innerText
+      })
+
+      arrayToStoreEntries.push(googleResultEntry);
+    }
+    //==============================================================
+    //========== result finding loop end
+    //==============================================================
+
     // finalizing
+    DOM.scrapeArea.innerHTML = '';
+    DOM.JSONArea.innerHTML = '';
     const finalJSON = {
-      results: arrayToStore
+      results: arrayToStoreEntries.reverse() // needed because of reverseNodeCollection
     }
 
     // rendering
-    scrapeArea.innerHTML = ''; // better to have it empty, if we want to make it occupied, clean and safe!
-    scrapeArea.appendChild(preview);
-    JSONArea.innerHTML = ''; // same as above
-    console.log(JSON.stringify(finalJSON));
-    JSONArea.innerHTML = JSON.stringify(finalJSON, null, 2).trim();
+    if (changedQuery) {
+      const storageDiv = document.createElement("div");
+      storageDiv.classList.add("changedQuery")
+      storageDiv.innerText = `Google searched for ${changedQuery} instead!`;
+      DOM.scrapeArea.appendChild(storageDiv);
+    }
+    DOM.scrapeArea.appendChild(resultContainer);
 
+    DOM.JSONArea.innerHTML = formatJSON(JSON.stringify(finalJSON));
+    DOM.downloadButton.setAttribute("data-state", "enabled");
   })
   .catch(error => {
     console.error('Error:', error);
-    JSONArea.innerHTML = 'Error occured.'; // same as above
+    DOM.JSONArea.innerHTML = 'Error occured.';  // same as above
+    DOM.downloadButton.setAttribute("data-state", "disabled");
+  })
+  .finally(() => {
+    DOM.loadingIndicator.classList.remove("visible");
   });
-
 }
+//================================================================================================
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% API CALL END
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 // Download JSON as file
 function downloadJSON(jsonData: object) {
@@ -127,8 +218,11 @@ function downloadJSON(jsonData: object) {
 }
 
 // Add the event listener to the download button
+DOM.downloadButton.addEventListener('click', () => {
 
-downloadButton.addEventListener('click', () => {
-  const jsonData = { results: arrayToStore }; // Pass the correct JSON data here
+  if (DOM.downloadButton.getAttribute("data-state") !== "enabled")
+    return;
+
+  const jsonData = { results: arrayToStoreEntries }; // Pass the correct JSON data here
   downloadJSON(jsonData); // Call the download function
 });

@@ -12,9 +12,12 @@
   </header>
   <main>
     <!-- Input Box -->
-    <div id="input-box">
-      <input type="text" id="search-input" placeholder="temperature on venus" />
-      <button id="scrape-btn">Scrape</button>
+    <div id="input-container">
+      <div id="input-box">
+        <input type="text" id="search-input" placeholder="temperature on venus" value="restaurants nearby"/>
+        <button id="scrape-btn">Scrape</button>
+        <div id="loading-indicator" class="hidden"></div> <!-- Loading indicator -->
+      </div>
     </div>
 
     <!-- Result Container (Left: JSON, Right: Google Results) -->
@@ -31,7 +34,7 @@
     <button id="save-btn">Save</button>
   </main>
   <footer>
-    <p>Developed by Martin Melichar</p>
+    <p>Developed by MM</p>
   </footer>
   <script type="module" src="/src/main.ts"></script>
 </body>
